@@ -122,7 +122,11 @@ class upload_audio(APIView):
             summary_ids = model.generate(torch.tensor([input_ids]),  num_beams=5, max_length=512, eos_token_id=1, do_sample=True, top_k=40, top_p=40)
             generated_summary = tokenizer.decode(summary_ids.squeeze().tolist(), skip_special_tokens=True)
             result_text['our_summarization'] = generated_summary
-            print(result_text)
+            print(
+                'transcription : ' + result_text['transcription'] + '\n\n' +
+                'summarization : ' + result_text['summarization'] + '\n\n' +
+                'our_summarization : ' + result_text['our_summarization']
+            )
             
 
             time_elapsed = datetime.now() - start_time
