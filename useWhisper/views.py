@@ -20,6 +20,8 @@ import time
 from django.conf import settings
 from transformers import PreTrainedTokenizerFast, BartForConditionalGeneration
 import torch
+from datetime import datetime
+
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -52,6 +54,7 @@ class upload_audio(APIView):
             
             #1초 sleep --> 혹시 파일이 저장되는데 시간이 걸릴까봐
             #time.sleep(1)
+
             
             #whisper 사용
             model = whisper.load_model("base")
@@ -79,6 +82,7 @@ class upload_audio(APIView):
 
 
             #kobart 불러오기
+            start_time = datetime.now()
             tokenizer = PreTrainedTokenizerFast.from_pretrained("digit82/kobart-summarization")
             kobart_model = BartForConditionalGeneration.from_pretrained("digit82/kobart-summarization")
             #토크나이저를 사용해 모델이 인식할 수 있는 토큰 형태로 바꿈.
@@ -102,18 +106,40 @@ class upload_audio(APIView):
             )
             
             result_text['summarization'] = tokenizer.decode(summary_text_ids[0], skip_special_tokens=True)
-            
             #print("Summarization : " + result_text['summarization'])
+            
+            time_elapsed = datetime.now() - start_time
+            print('Time elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
+            
+            #out model
+            start_time = datetime.now()
+            tokenizer = PreTrainedTokenizerFast.from_pretrained('soline013/KoBART-summarization-train')
+            model = BartForConditionalGeneration.from_pretrained('soline013/KoBART-summarization-train')
+            result_text['transcription'] = result_text['transcription'].replace('\n', ' ')
+            raw_input_ids = tokenizer.encode(result_text['transcription'])
+            input_ids = [tokenizer.bos_token_id] + raw_input_ids + [tokenizer.eos_token_id]
+
+            summary_ids = model.generate(torch.tensor([input_ids]),  num_beams=5, max_length=512, eos_token_id=1, do_sample=True, top_k=40, top_p=40)
+            generated_summary = tokenizer.decode(summary_ids.squeeze().tolist(), skip_special_tokens=True)
+            result_text['our_summarization'] = generated_summary
             print(result_text)
             
+
+            time_elapsed = datetime.now() - start_time
+            print('Time elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
+            
+            
+            #DB에 저장
             save_in_DB = Transcription(
                 title = new_file_name,
                 transcription = result_text['transcription'],
-                summarization = result_text['summarization']
+                summarization = result_text['summarization'],
+                our_summarization = result_text['our_summarization']
             )
             save_in_DB.save()
             
-            print(Transcription.objects.filter(pk=save_in_DB.id).values())
+            #print(Transcription.objects.filter(pk=save_in_DB.id).values())
+            
             
             return JsonResponse(result_text, safe=False, json_dumps_params={'ensure_ascii': False}, status=200)
         
