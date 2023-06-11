@@ -106,6 +106,15 @@ class upload_audio(APIView):
             #print("Summarization : " + result_text['summarization'])
             print(result_text)
             
+            save_in_DB = Transcription(
+                title = new_file_name,
+                transcription = result_text['transcription'],
+                summarization = result_text['summarization']
+            )
+            save_in_DB.save()
+            
+            print(Transcription.objects.filter(pk=save_in_DB.id).values())
+            
             return JsonResponse(result_text, safe=False, json_dumps_params={'ensure_ascii': False}, status=200)
         
 
