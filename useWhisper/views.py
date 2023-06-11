@@ -122,3 +122,9 @@ class upload_audio(APIView):
 
     def get(self, request):
         return HttpResponse("Success",status=200)
+    
+# 만약 GET을 통해 쿼리 불러올 시 처리할 명령어    
+# class result_page(APIView):
+#     def get(self, request):
+#         q = Transcription.objects.filter(title=request.GET.get('id'))
+#         return JsonResponse(q, safe=False, json_dumps_params={'ensure_ascii': False}, status=200)
