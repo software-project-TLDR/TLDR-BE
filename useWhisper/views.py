@@ -1,33 +1,20 @@
 from django.shortcuts import render
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-import tempfile
-from django.http import HttpResponse
-from pydub import AudioSegment
-import os
-from django.views.generic import TemplateView
-from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie, csrf_protect, csrf_exempt
-from django.utils.decorators import method_decorator
-
-from django.http import Http404, JsonResponse
-from rest_framework import status
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from .serializers import TranscriptionSerializers
-from .models import Transcription
-import whisper
-import time
+from django.http import HttpResponse, JsonResponse
 from django.conf import settings
+from .models import Transcription
+from rest_framework.views import APIView
 from transformers import PreTrainedTokenizerFast, BartForConditionalGeneration
-import torch
+from pydub import AudioSegment
 from datetime import datetime
+import tempfile
+import os
+import whisper
+import torch
 
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-class TranscriptionListView(APIView):
-    def post(self, request):
-        serializer = TranscriptionSerializers(data = request.data)
         
         
 class upload_audio(APIView):
@@ -52,33 +39,12 @@ class upload_audio(APIView):
             # 임시 파일 삭제
             os.remove(temp_file.name)
             
-            #1초 sleep --> 혹시 파일이 저장되는데 시간이 걸릴까봐
-            #time.sleep(1)
-
-            
             #whisper 사용
             model = whisper.load_model("base")
             audio = whisper.load_audio(settings.MEDIA_ROOT + '/' + new_file_name)
-            
-            # pad_or_trim()을 안 써야만 30초 이상 transcribe 가능
-            #audio = whisper.pad_or_trim(audio)
-            
-            #아래 주석된 코드들은 pad_or_trim()을 써야만 에러가 안 남.
-            # # make log-Mel spectrogram and move to the same device as the model
-            # mel = whisper.log_mel_spectrogram(audio).to(model.device)
-
-            # # detect the spoken language
-            # _, probs = model.detect_language(mel)
-            # print(f"Detected language: {max(probs, key=probs.get)}")
-
-            # # decode the audio
-            # options = whisper.DecodingOptions()
-            # result = whisper.decode(model, mel, options, fp16=False)
-            
 
             result_all = model.transcribe(audio, fp16=False)
             result_text = {"transcription" : result_all['text']}
-            #print("Transcription : " + result_text['text'])
 
 
             #kobart 불러오기
@@ -142,8 +108,8 @@ class upload_audio(APIView):
             )
             save_in_DB.save()
             
+            #쿼리 불러오는 명령어
             #print(Transcription.objects.filter(pk=save_in_DB.id).values())
-            
             
             return JsonResponse(result_text, safe=False, json_dumps_params={'ensure_ascii': False}, status=200)
         
